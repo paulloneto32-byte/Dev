@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getUserId } from '@/lib/get-user'
 import { prisma } from '@/lib/prisma'
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = await getUserId()
 
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type') || 'overview'
@@ -27,11 +25,11 @@ export async function GET(request: Request) {
 
       const [income, expense] = await Promise.all([
         prisma.transaction.aggregate({
-          where: { userId: session.user.id, type: 'INCOME', date: { gte: mStart, lte: mEnd } },
+          where: { userId, type: 'INCOME', date: { gte: mStart, lte: mEnd } },
           _sum: { amount: true },
         }),
         prisma.transaction.aggregate({
-          where: { userId: session.user.id, type: 'EXPENSE', date: { gte: mStart, lte: mEnd } },
+          where: { userId, type: 'EXPENSE', date: { gte: mStart, lte: mEnd } },
           _sum: { amount: true },
         }),
       ])
@@ -50,7 +48,7 @@ export async function GET(request: Request) {
     // Expense breakdown by category for selected month
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         type: 'EXPENSE',
         date: { gte: start, lte: end },
         categoryId: { not: null },
@@ -91,7 +89,7 @@ export async function GET(request: Request) {
     // Top 10 expenses for the month
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         type: 'EXPENSE',
         date: { gte: start, lte: end },
       },
@@ -105,17 +103,17 @@ export async function GET(request: Request) {
   // Overview for month
   const [income, expense, transactionCount] = await Promise.all([
     prisma.transaction.aggregate({
-      where: { userId: session.user.id, type: 'INCOME', date: { gte: start, lte: end } },
+      where: { userId, type: 'INCOME', date: { gte: start, lte: end } },
       _sum: { amount: true },
       _count: true,
     }),
     prisma.transaction.aggregate({
-      where: { userId: session.user.id, type: 'EXPENSE', date: { gte: start, lte: end } },
+      where: { userId, type: 'EXPENSE', date: { gte: start, lte: end } },
       _sum: { amount: true },
       _count: true,
     }),
     prisma.transaction.count({
-      where: { userId: session.user.id, date: { gte: start, lte: end } },
+      where: { userId, date: { gte: start, lte: end } },
     }),
   ])
 
@@ -124,11 +122,11 @@ export async function GET(request: Request) {
   const prevEnd = endOfMonth(subMonths(start, 1))
   const [prevIncome, prevExpense] = await Promise.all([
     prisma.transaction.aggregate({
-      where: { userId: session.user.id, type: 'INCOME', date: { gte: prevStart, lte: prevEnd } },
+      where: { userId, type: 'INCOME', date: { gte: prevStart, lte: prevEnd } },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: { userId: session.user.id, type: 'EXPENSE', date: { gte: prevStart, lte: prevEnd } },
+      where: { userId, type: 'EXPENSE', date: { gte: prevStart, lte: prevEnd } },
       _sum: { amount: true },
     }),
   ])

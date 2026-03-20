@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 const defaultCategories = {
@@ -24,15 +23,11 @@ const defaultCategories = {
 
 export async function POST() {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     // Verificar se o usuário já tem categorias
     const existingCategories = await prisma.category.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
     })
 
     if (existingCategories.length > 0) {
@@ -46,7 +41,7 @@ export async function POST() {
     for (const cat of defaultCategories.EXPENSE) {
       const parent = await prisma.category.create({
         data: {
-          userId: session.user.id,
+          userId,
           name: cat.name,
           type: "EXPENSE",
           color: cat.color,
@@ -58,7 +53,7 @@ export async function POST() {
       for (const subName of cat.subcategories) {
         await prisma.category.create({
           data: {
-            userId: session.user.id,
+            userId,
             name: subName,
             type: "EXPENSE",
             color: cat.color,
@@ -73,7 +68,7 @@ export async function POST() {
     for (const cat of defaultCategories.INCOME) {
       const parent = await prisma.category.create({
         data: {
-          userId: session.user.id,
+          userId,
           name: cat.name,
           type: "INCOME",
           color: cat.color,
@@ -85,7 +80,7 @@ export async function POST() {
       for (const subName of cat.subcategories) {
         await prisma.category.create({
           data: {
-            userId: session.user.id,
+            userId,
             name: subName,
             type: "INCOME",
             color: cat.color,

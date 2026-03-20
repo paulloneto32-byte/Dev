@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get("month") || new Date().toISOString().slice(0, 7)
@@ -20,7 +15,7 @@ export async function GET(request: Request) {
 
     // Buscar todas as contas do usuário
     const accounts = await prisma.bankAccount.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
     })
 
     const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
@@ -28,7 +23,7 @@ export async function GET(request: Request) {
     // Transações do mês
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         date: {
           gte: firstDay,
           lte: lastDay,
@@ -69,7 +64,7 @@ export async function GET(request: Request) {
 
     // Últimas 5 transações
     const recentTransactions = await prisma.transaction.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       include: {
         account: true,
         category: true,
@@ -88,7 +83,7 @@ export async function GET(request: Request) {
 
       const monthTransactions = await prisma.transaction.findMany({
         where: {
-          userId: session.user.id,
+          userId,
           date: {
             gte: monthFirst,
             lte: monthLast,

@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get("month")
@@ -18,7 +13,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type")
 
     const where: any = {
-      userId: session.user.id,
+      userId,
     }
 
     if (month) {
@@ -64,11 +59,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const body = await request.json()
     const {
@@ -92,7 +83,7 @@ export async function POST(request: Request) {
 
     // Se for parcelamento, criar múltiplas transações
     if (installments && installments > 1) {
-      const installmentGroup = `${Date.now()}-${session.user.id}`
+      const installmentGroup = `${Date.now()}-${userId}`
       const transactions = []
 
       for (let i = 0; i < installments; i++) {
@@ -101,7 +92,7 @@ export async function POST(request: Request) {
 
         const transaction = await prisma.transaction.create({
           data: {
-            userId: session.user.id,
+            userId,
             accountId,
             categoryId: categoryId || null,
             amount,
@@ -141,7 +132,7 @@ export async function POST(request: Request) {
     // Transação única
     const transaction = await prisma.transaction.create({
       data: {
-        userId: session.user.id,
+        userId,
         accountId,
         categoryId: categoryId || null,
         amount,

@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const categories = await prisma.category.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       include: {
         subcategories: true,
       },
@@ -31,11 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const body = await request.json()
     const { name, type, color, icon, parentId } = body
@@ -49,7 +40,7 @@ export async function POST(request: Request) {
 
     const category = await prisma.category.create({
       data: {
-        userId: session.user.id,
+        userId,
         name,
         type,
         color: color || "#6b7280",

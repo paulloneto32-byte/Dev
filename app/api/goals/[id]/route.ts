@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  const userId = await getUserId()
 
   const { id } = await params
   const body = await request.json()
   const { name, targetAmount, currentAmount, deadline, accountId, color, icon, isCompleted } = body
 
   const goal = await prisma.goal.update({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
     data: {
       ...(name && { name }),
       ...(targetAmount !== undefined && { targetAmount }),
@@ -35,10 +33,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  const userId = await getUserId()
 
   const { id } = await params
-  await prisma.goal.delete({ where: { id, userId: session.user.id } })
+  await prisma.goal.delete({ where: { id, userId } })
   return NextResponse.json({ message: "Meta excluída com sucesso" })
 }

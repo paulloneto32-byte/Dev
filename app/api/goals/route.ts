@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const goals = await prisma.goal.findMany({
-      where: { userId: session.user.id },
+      where: { userId },
       include: {
         account: true,
       },
@@ -31,11 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+    const userId = await getUserId()
 
     const body = await request.json()
     const { name, targetAmount, deadline, accountId, color, icon } = body
@@ -49,7 +40,7 @@ export async function POST(request: Request) {
 
     const goal = await prisma.goal.create({
       data: {
-        userId: session.user.id,
+        userId,
         name,
         targetAmount,
         deadline: deadline ? new Date(deadline) : null,

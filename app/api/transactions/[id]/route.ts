@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { getUserId } from "@/lib/get-user"
 import { prisma } from "@/lib/prisma"
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  const userId = await getUserId()
 
   const { id } = await params
   const body = await request.json()
   const { accountId, categoryId, amount, date, description, type } = body
 
   const originalTransaction = await prisma.transaction.findUnique({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
   })
   if (!originalTransaction) return NextResponse.json({ error: "Transação não encontrada" }, { status: 404 })
 
@@ -33,7 +31,7 @@ export async function PUT(
   }
 
   const transaction = await prisma.transaction.update({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
     data: {
       ...(accountId && { accountId }),
       ...(categoryId !== undefined && { categoryId }),
@@ -63,11 +61,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  const userId = await getUserId()
 
   const { id } = await params
-  const transaction = await prisma.transaction.findUnique({ where: { id, userId: session.user.id } })
+  const transaction = await prisma.transaction.findUnique({ where: { id, userId } })
   if (!transaction) return NextResponse.json({ error: "Transação não encontrada" }, { status: 404 })
 
   if (transaction.type === "EXPENSE") {
@@ -76,6 +73,6 @@ export async function DELETE(
     await prisma.bankAccount.update({ where: { id: transaction.accountId }, data: { balance: { decrement: transaction.amount } } })
   }
 
-  await prisma.transaction.delete({ where: { id, userId: session.user.id } })
+  await prisma.transaction.delete({ where: { id, userId } })
   return NextResponse.json({ message: "Transação excluída com sucesso" })
 }
