@@ -5,72 +5,40 @@ import { prisma } from "@/lib/prisma"
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
+  const { id } = await params
+  const body = await request.json()
+  const { name, targetAmount, currentAmount, deadline, accountId, color, icon, isCompleted } = body
 
-    const body = await request.json()
-    const { name, targetAmount, currentAmount, deadline, accountId, color, icon, isCompleted } = body
-
-    const goal = await prisma.goal.update({
-      where: {
-        id: params.id,
-        userId: session.user.id,
-      },
-      data: {
-        ...(name && { name }),
-        ...(targetAmount !== undefined && { targetAmount }),
-        ...(currentAmount !== undefined && { currentAmount }),
-        ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
-        ...(accountId !== undefined && { accountId }),
-        ...(color && { color }),
-        ...(icon && { icon }),
-        ...(isCompleted !== undefined && { isCompleted }),
-      },
-      include: {
-        account: true,
-      },
-    })
-
-    return NextResponse.json(goal)
-  } catch (error) {
-    console.error("Erro ao atualizar meta:", error)
-    return NextResponse.json(
-      { error: "Erro ao atualizar meta" },
-      { status: 500 }
-    )
-  }
+  const goal = await prisma.goal.update({
+    where: { id, userId: session.user.id },
+    data: {
+      ...(name && { name }),
+      ...(targetAmount !== undefined && { targetAmount }),
+      ...(currentAmount !== undefined && { currentAmount }),
+      ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+      ...(accountId !== undefined && { accountId }),
+      ...(color && { color }),
+      ...(icon && { icon }),
+      ...(isCompleted !== undefined && { isCompleted }),
+    },
+    include: { account: true },
+  })
+  return NextResponse.json(goal)
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
-
-    await prisma.goal.delete({
-      where: {
-        id: params.id,
-        userId: session.user.id,
-      },
-    })
-
-    return NextResponse.json({ message: "Meta excluída com sucesso" })
-  } catch (error) {
-    console.error("Erro ao excluir meta:", error)
-    return NextResponse.json(
-      { error: "Erro ao excluir meta" },
-      { status: 500 }
-    )
-  }
+  const { id } = await params
+  await prisma.goal.delete({ where: { id, userId: session.user.id } })
+  return NextResponse.json({ message: "Meta excluída com sucesso" })
 }

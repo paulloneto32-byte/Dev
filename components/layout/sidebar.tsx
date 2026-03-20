@@ -12,6 +12,7 @@ import {
   FileText,
   CreditCard,
   Settings,
+  Tag,
 } from "lucide-react"
 
 const menuItems = [
@@ -31,6 +32,11 @@ const menuItems = [
     icon: Wallet,
   },
   {
+    title: "Categorias",
+    href: "/categories",
+    icon: Tag,
+  },
+  {
     title: "Metas",
     href: "/goals",
     icon: Target,
@@ -47,7 +53,7 @@ const menuItems = [
   },
   {
     title: "Cartões",
-    href: "/cards",
+    href: "/credit-cards",
     icon: CreditCard,
   },
   {
